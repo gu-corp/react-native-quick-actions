@@ -13,14 +13,15 @@
 #import "RNQuickActionManager.h"
 
 NSString *const RCTShortcutItemClicked = @"ShortcutItemClicked";
+BOOL RCTShortcutsAvailable = NO;
 
 NSDictionary *RNQuickAction(UIApplicationShortcutItem *item) {
     if (!item) return nil;
     return @{
-        @"type": item.type,
-        @"title": item.localizedTitle,
-        @"userInfo": item.userInfo ?: @{}
-    };
+             @"type": item.type,
+             @"title": item.localizedTitle,
+             @"userInfo": item.userInfo ?: @{}
+             };
 }
 
 @implementation RNQuickActionManager
@@ -31,6 +32,10 @@ NSDictionary *RNQuickAction(UIApplicationShortcutItem *item) {
 RCT_EXPORT_MODULE();
 
 @synthesize bridge = _bridge;
+
++ (void)initialize {
+    RCTShortcutsAvailable = [[UIApplication sharedApplication].delegate.window.rootViewController.traitCollection forceTouchCapability] == UIForceTouchCapabilityAvailable;
+}
 
 - (instancetype)init
 {
@@ -55,7 +60,9 @@ RCT_EXPORT_MODULE();
 - (void)setBridge:(RCTBridge *)bridge
 {
     _bridge = bridge;
-    _initialAction = [bridge.launchOptions[UIApplicationLaunchOptionsShortcutItemKey] copy];
+    if (RCTShortcutsAvailable) {
+        _initialAction = [bridge.launchOptions[UIApplicationLaunchOptionsShortcutItemKey] copy];
+    }
 }
 
 // Map user passed array of UIApplicationShortcutItem
@@ -63,65 +70,68 @@ RCT_EXPORT_MODULE();
     // FIXME: Dynamically map icons from UIApplicationShortcutIconType to / from their string counterparts
     // so we don't have to update this list every time Apple adds new system icons.
     NSDictionary *icons = @{
-        @"Compose": @(UIApplicationShortcutIconTypeCompose),
-        @"Play": @(UIApplicationShortcutIconTypePlay),
-        @"Pause": @(UIApplicationShortcutIconTypePause),
-        @"Add": @(UIApplicationShortcutIconTypeAdd),
-        @"Location": @(UIApplicationShortcutIconTypeLocation),
-        @"Search": @(UIApplicationShortcutIconTypeSearch),
-        @"Share": @(UIApplicationShortcutIconTypeShare),
-        @"Prohibit": @(UIApplicationShortcutIconTypeProhibit),
-        @"Contact": @(UIApplicationShortcutIconTypeContact),
-        @"Home": @(UIApplicationShortcutIconTypeHome),
-        @"MarkLocation": @(UIApplicationShortcutIconTypeMarkLocation),
-        @"Favorite": @(UIApplicationShortcutIconTypeFavorite),
-        @"Love": @(UIApplicationShortcutIconTypeLove),
-        @"Cloud": @(UIApplicationShortcutIconTypeCloud),
-        @"Invitation": @(UIApplicationShortcutIconTypeInvitation),
-        @"Confirmation": @(UIApplicationShortcutIconTypeConfirmation),
-        @"Mail": @(UIApplicationShortcutIconTypeMail),
-        @"Message": @(UIApplicationShortcutIconTypeMessage),
-        @"Date": @(UIApplicationShortcutIconTypeDate),
-        @"Time": @(UIApplicationShortcutIconTypeTime),
-        @"CapturePhoto": @(UIApplicationShortcutIconTypeCapturePhoto),
-        @"CaptureVideo": @(UIApplicationShortcutIconTypeCaptureVideo),
-        @"Task": @(UIApplicationShortcutIconTypeTask),
-        @"TaskCompleted": @(UIApplicationShortcutIconTypeTaskCompleted),
-        @"Alarm": @(UIApplicationShortcutIconTypeAlarm),
-        @"Bookmark": @(UIApplicationShortcutIconTypeBookmark),
-        @"Shuffle": @(UIApplicationShortcutIconTypeShuffle),
-        @"Audio": @(UIApplicationShortcutIconTypeAudio),
-        @"Update": @(UIApplicationShortcutIconTypeUpdate)
-    };
-
+                            @"Compose": @(UIApplicationShortcutIconTypeCompose),
+                            @"Play": @(UIApplicationShortcutIconTypePlay),
+                            @"Pause": @(UIApplicationShortcutIconTypePause),
+                            @"Add": @(UIApplicationShortcutIconTypeAdd),
+                            @"Location": @(UIApplicationShortcutIconTypeLocation),
+                            @"Search": @(UIApplicationShortcutIconTypeSearch),
+                            @"Share": @(UIApplicationShortcutIconTypeShare),
+                            @"Prohibit": @(UIApplicationShortcutIconTypeProhibit),
+                            @"Contact": @(UIApplicationShortcutIconTypeContact),
+                            @"Home": @(UIApplicationShortcutIconTypeHome),
+                            @"MarkLocation": @(UIApplicationShortcutIconTypeMarkLocation),
+                            @"Favorite": @(UIApplicationShortcutIconTypeFavorite),
+                            @"Love": @(UIApplicationShortcutIconTypeLove),
+                            @"Cloud": @(UIApplicationShortcutIconTypeCloud),
+                            @"Invitation": @(UIApplicationShortcutIconTypeInvitation),
+                            @"Confirmation": @(UIApplicationShortcutIconTypeConfirmation),
+                            @"Mail": @(UIApplicationShortcutIconTypeMail),
+                            @"Message": @(UIApplicationShortcutIconTypeMessage),
+                            @"Date": @(UIApplicationShortcutIconTypeDate),
+                            @"Time": @(UIApplicationShortcutIconTypeTime),
+                            @"CapturePhoto": @(UIApplicationShortcutIconTypeCapturePhoto),
+                            @"CaptureVideo": @(UIApplicationShortcutIconTypeCaptureVideo),
+                            @"Task": @(UIApplicationShortcutIconTypeTask),
+                            @"TaskCompleted": @(UIApplicationShortcutIconTypeTaskCompleted),
+                            @"Alarm": @(UIApplicationShortcutIconTypeAlarm),
+                            @"Bookmark": @(UIApplicationShortcutIconTypeBookmark),
+                            @"Shuffle": @(UIApplicationShortcutIconTypeShuffle),
+                            @"Audio": @(UIApplicationShortcutIconTypeAudio),
+                            @"Update": @(UIApplicationShortcutIconTypeUpdate)
+                            };
+    
     NSMutableArray *shortcutItems = [NSMutableArray new];
-
+    
     [passedArray enumerateObjectsUsingBlock:^(NSDictionary *item, NSUInteger idx, BOOL *stop) {
         NSString *iconName = item[@"icon"];
-
+        
         // If passed iconName is enum, use system icon
         // Otherwise, load from bundle
         UIApplicationShortcutIcon *shortcutIcon;
         NSNumber *iconType = icons[iconName];
-
+        
         if (iconType) {
             shortcutIcon = [UIApplicationShortcutIcon iconWithType:[iconType intValue]];
         } else if (iconName) {
             shortcutIcon = [UIApplicationShortcutIcon iconWithTemplateImageName:iconName];
         }
-
+        
         [shortcutItems addObject:[[UIApplicationShortcutItem alloc] initWithType:item[@"type"]
                                                                   localizedTitle:item[@"title"] ?: item[@"type"]
                                                                localizedSubtitle:item[@"subtitle"]
                                                                             icon:shortcutIcon
                                                                         userInfo:item[@"userInfo"]]];
     }];
-
+    
     return shortcutItems;
 }
 
 RCT_EXPORT_METHOD(setShortcutItems:(NSArray *) shortcutItems)
 {
+    if (!RCTShortcutsAvailable) {
+        return;
+    }
     NSArray *dynamicShortcuts = [self dynamicShortcutItemsForPassedArray:shortcutItems];
     [UIApplication sharedApplication].shortcutItems = dynamicShortcuts;
 }
@@ -129,23 +139,26 @@ RCT_EXPORT_METHOD(setShortcutItems:(NSArray *) shortcutItems)
 RCT_EXPORT_METHOD(isSupported:(RCTResponseSenderBlock)callback)
 {
     BOOL supported = [[UIApplication sharedApplication].delegate.window.rootViewController.traitCollection forceTouchCapability] == UIForceTouchCapabilityAvailable;
-
+    
     callback(@[[NSNull null], [NSNumber numberWithBool:supported]]);
 }
 
 RCT_EXPORT_METHOD(clearShortcutItems)
 {
+    if (!RCTShortcutsAvailable) {
+        return;
+    }
     [UIApplication sharedApplication].shortcutItems = nil;
 }
 
 + (void)onQuickActionPress:(UIApplicationShortcutItem *) shortcutItem completionHandler:(void (^)(BOOL succeeded)) completionHandler
 {
     RCTLogInfo(@"[RNQuickAction] Quick action shortcut item pressed: %@", [shortcutItem type]);
-
+    
     [[NSNotificationCenter defaultCenter] postNotificationName:RCTShortcutItemClicked
                                                         object:self
                                                       userInfo:RNQuickAction(shortcutItem)];
-
+    
     completionHandler(YES);
 }
 
@@ -158,8 +171,9 @@ RCT_EXPORT_METHOD(clearShortcutItems)
 - (NSDictionary *)constantsToExport
 {
     return @{
-      @"initialAction": RCTNullIfNil(RNQuickAction(_initialAction))
-    };
+             @"initialAction": RCTNullIfNil(RNQuickAction(_initialAction)),
+             @"isAvailable" : @(RCTShortcutsAvailable),
+             };
 }
 
 @end
